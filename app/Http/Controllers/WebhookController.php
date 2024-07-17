@@ -39,6 +39,9 @@ class WebhookController extends Controller
             $user = $payment->user;
             $user->balance += $paymentIntent->amount_received / 100;
             $user->save();
+
+            $payment->status = 'success';
+            $payment->save();
         }
 
         return response()->json(['status' => 'success'], 200);
