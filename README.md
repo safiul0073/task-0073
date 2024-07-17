@@ -71,4 +71,12 @@ Run the database seeder and you're done
     password: '12345678'
 
     This project is uses referrar system so that why this user is a root user 
+
+
+*** Services *** :
+    Mail & Stripe 
+
+    you need to setup env for those services
 # task-0073
+
+
