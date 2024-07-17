@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Stripe\Stripe;
 use Stripe\Webhook;
 
@@ -36,12 +37,19 @@ class WebhookController extends Controller
             $payment = Payment::where('payment_intent_id', $paymentIntent->id)
                 ->where('status', 'pending')->first();
 
-            $user = $payment->user;
-            $user->balance += $paymentIntent->amount_received / 100;
-            $user->save();
+            try {
+                DB::beginTransaction();
+                $user = $payment->user;
+                $user->balance += $paymentIntent->amount_received / 100;
+                $user->save();
 
-            $payment->status = 'success';
-            $payment->save();
+                $payment->status = 'success';
+                $payment->save();
+                DB::commit();
+            } catch (\Throwable $th) {
+                DB::rollBack();
+                \Log::error($th);
+            }
         }
 
         return response()->json(['status' => 'success'], 200);

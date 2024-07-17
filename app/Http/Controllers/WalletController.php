@@ -30,48 +30,55 @@ class WalletController extends Controller
             'amount' => 'required',
             'currency' => 'required',
         ]);
-        
+
         $user = User::find(auth()->id());
 
-        $payment = $user->payments()->where([
-            'status' => 'pending',
-            'amount' => (int) $request->amount
-        ])->first();
+        try {
+            DB::beginTransaction();
+            $payment = $user->payments()->where([
+                'status' => 'pending',
+                'amount' => (int) $request->amount
+            ])->first();
 
-        if ($payment) {
-            $payment_intent_id = $payment->payment_intent_id;
-            $payment_intent = PaymentIntent::retrieve($payment_intent_id);
+            if ($payment) {
+                $payment_intent_id = $payment->payment_intent_id;
+                $payment_intent = PaymentIntent::retrieve($payment_intent_id);
 
-            if ($payment_intent->status == 'succeeded') {
-                return redirect()->back()->with('success', 'Payment successful');
+                if ($payment_intent->status == 'succeeded') {
+                    return redirect()->back()->with('success', 'Payment successful');
+                }
+
+                return view('dashboard.wallet.confirm', [
+                    'clientSecret' => $payment_intent->client_secret,
+                ]);
             }
 
-            return view('dashboard.wallet.confirm', [
-                'clientSecret' => $payment_intent->client_secret,
+            Stripe::setApiKey(env('STRIPE_SECRET'));
+
+            $paymentIntent = PaymentIntent::create([
+                'amount' => $request->amount * 100,
+                'currency' => $request->currency,
+                'metadata' => [
+                    'user_id' => auth()->id(),
+                ],
+                'payment_method_types' => ['card'],
             ]);
+
+            $user->payments()->create([
+                'payment_intent_id' => $paymentIntent->id,
+                'amount' => $request->amount,
+                'currency' => $request->currency,
+                'status' => 'pending',
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return redirect()->back()->with('error', $th->getMessage());
         }
-
-        Stripe::setApiKey(env('STRIPE_SECRET'));
-
-        $paymentIntent = PaymentIntent::create([
-            'amount' => $request->amount * 100,
-            'currency' => $request->currency,
-            'metadata' => [
-                'user_id' => auth()->id(),
-            ],
-            'payment_method_types' => ['card'],
-        ]);
-
-        $user->payments()->create([
-            'payment_intent_id' => $paymentIntent->id,
-            'amount' => $request->amount,
-            'currency' => $request->currency,
-            'status' => 'pending',
-        ]);
 
         return view('dashboard.wallet.confirm', [
             'clientSecret' => $paymentIntent->client_secret,
         ]);
     }
-
 }
