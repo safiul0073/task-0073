@@ -28,7 +28,9 @@ class WalletController extends Controller
     {
         $request->validate([
             'amount' => 'required',
+            'currency' => 'required',
         ]);
+        
         $user = User::find(auth()->id());
 
         $payment = $user->payments()->where([
@@ -39,7 +41,7 @@ class WalletController extends Controller
         if ($payment) {
             $payment_intent_id = $payment->payment_intent_id;
             $payment_intent = PaymentIntent::retrieve($payment_intent_id);
-            
+
             if ($payment_intent->status == 'succeeded') {
                 return redirect()->back()->with('success', 'Payment successful');
             }
@@ -53,7 +55,7 @@ class WalletController extends Controller
 
         $paymentIntent = PaymentIntent::create([
             'amount' => $request->amount * 100,
-            'currency' => 'usd',
+            'currency' => $request->currency,
             'metadata' => [
                 'user_id' => auth()->id(),
             ],
@@ -63,6 +65,7 @@ class WalletController extends Controller
         $user->payments()->create([
             'payment_intent_id' => $paymentIntent->id,
             'amount' => $request->amount,
+            'currency' => $request->currency,
             'status' => 'pending',
         ]);
 

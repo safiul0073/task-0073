@@ -18,13 +18,12 @@
                                 autocomplete="name" />
                             <x-input-error class="mt-2" :messages="$errors->get('amount')" />
                         </div>
-                        <div class="w-full">
-                            <label for="card-element">
-                                Credit or debit card
-                            </label>
-                            <div id="card-element">
-                            </div>
-                            <div id="card-errors" role="alert"></div>
+                        <div>
+                            <x-input-label for="currency" :value="__('Currency')" />
+                            <x-text-input id="currency" type="number" name="currency" type="text"
+                                class="mt-1 block w-full" placeholder="USD" type="text" :value="old('currency')" required autofocus
+                                autocomplete="name" />
+                            <x-input-error class="mt-2" :messages="$errors->get('currency')" />
                         </div>
                         <div class="flex items-center gap-4">
                             <x-bladewind::button can_submit="true" class="mx-auto block">Add Money</x-bladewind::button>
@@ -34,45 +33,5 @@
             </div>
         </div>
     </div>
-    @push('js')
-        <script src="https://js.stripe.com/v3/"></script>
-        <script>
-            var stripe = Stripe('{{ env('STRIPE_KEY') }}');
-            var elements = stripe.elements();
-            var card = elements.create('card');
-            card.mount('#card-element');
 
-            card.addEventListener('change', function(event) {
-                var displayError = document.getElementById('card-errors');
-                if (event.error) {
-                    displayError.textContent = event.error.message;
-                } else {
-                    displayError.textContent = '';
-                }
-            });
-
-            var form = document.getElementById('payment-form');
-            form.addEventListener('submit', function(event) {
-                event.preventDefault();
-                stripe.createToken(card).then(function(result) {
-                    if (result.error) {
-                        var errorElement = document.getElementById('card-errors');
-                        errorElement.textContent = result.error.message;
-                    } else {
-                        stripeTokenHandler(result.token);
-                    }
-                });
-            });
-
-            function stripeTokenHandler(token) {
-                var form = document.getElementById('payment-form');
-                var hiddenInput = document.createElement('input');
-                hiddenInput.setAttribute('type', 'hidden');
-                hiddenInput.setAttribute('name', 'stripeToken');
-                hiddenInput.setAttribute('value', token.id);
-                form.appendChild(hiddenInput);
-                form.submit();
-            }
-        </script>
-    @endpush
 </x-app-layout>
